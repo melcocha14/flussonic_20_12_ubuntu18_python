@@ -1,0 +1,9 @@
+[Unit]
+Description=Flussonic Callback Blocker
+After=network.target
+#PartOf=flussonic.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/env ip netns exec netns0 /flussonic_listener.sh
+Restart=always

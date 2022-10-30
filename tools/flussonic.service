@@ -1,0 +1,47 @@
+[Unit]
+Description=Flussonic streaming server
+After=network-online.target
+Wants=network-online.target
+Requires=flussonic-epmd.service
+Conflicts=ondemand.service
+
+[Service]
+Environment=HOME=/etc/flussonic
+Environment=PATH=/opt/flussonic/bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin
+Environment=LANG=C
+Environment=PROCNAME=flussonic
+Environment=STREAMER_SERVER_ID_PATH=/etc/flussonic/server.id
+Environment=STREAMER_LOG_DIR=/var/log/flussonic
+Environment=STREAMER_PID_PATH=/var/run/flussonic/pid
+Environment=STREAMER_BOOT_ERROR_FILE=/var/run/flussonic/boot-error.txt
+Type=notify
+User=root
+Group=root
+LimitNOFILE=204800
+ExecStartPre=/bin/sh -c "/bin/mkdir -p `dirname ${STREAMER_PID_PATH}`"
+ExecStartPre=/bin/sh -c "/bin/mkdir -p ${STREAMER_LOG_DIR}"
+
+# Set a network jail
+# Interface port REPLACE ETH0 WITH YOURS
+ExecStartPre=/veth.bash eth0 80
+# End of network jail
+
+ExecStart=/usr/bin/env ip netns exec netns0 /opt/flussonic/bin/run -noinput
+ExecReload=/usr/bin/env ip netns exec netns0 /opt/flussonic/contrib/control.erl reload
+ExecStop=/usr/bin/env ip netns exec netns0 /opt/flussonic/contrib/control.erl -p ${STREAMER_PID_PATH} stop
+
+# Start remove a network jail
+ExecStop=/veth_stop.bash eth0 80
+
+# End remove a network jail
+
+
+Restart=on-failure
+TimeoutStartSec=120s
+WatchdogSec=120
+WorkingDirectory=/opt/flussonic
+NotifyAccess=main
+TasksMax=infinity
+
+[Install]
+WantedBy=multi-user.target
